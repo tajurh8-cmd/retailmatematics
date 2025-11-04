@@ -4,7 +4,6 @@ function App() {
   const [page, setPage] = useState("menu");
   const [result, setResult] = useState("");
   const [inputs, setInputs] = useState({});
-  const [lastPage, setLastPage] = useState("");
 
   const handleChange = (e) => {
     const { id, value } = e.target;
@@ -13,12 +12,6 @@ function App() {
 
   const resetInputs = () => setInputs({});
   const format = (n) => Math.round(n).toLocaleString("id-ID");
-
-  const handleBack = () => {
-    setResult("");
-    setLastPage(page);
-    setPage("menu");
-  };
 
   const handleCalc = (formula) => {
     try {
@@ -45,17 +38,16 @@ function App() {
       {fields.map((f) => (
         <Input key={f} id={f} />
       ))}
-      <button onClick={() => handleCalc(calc)}>Hitung</button>
+      <button type="button" onClick={() => handleCalc(calc)}>
+        Hitung
+      </button>
       {result && <div className="result-card">{result}</div>}
-      <button
-        onClick={() => {
-          setResult("");
-          resetInputs();
-        }}
-      >
+      <button type="button" onClick={() => { setResult(""); resetInputs(); }}>
         🔁 Hitung Ulang
       </button>
-      <button onClick={handleBack}>⬅️ Kembali ke Menu</button>
+      <button type="button" onClick={() => { setResult(""); setPage("menu"); }}>
+        ⬅️ Kembali ke Menu
+      </button>
     </div>
   );
 
@@ -75,7 +67,7 @@ function App() {
         ["📊 LABA RUGI", "labarugi"],
         ["📰 LEAFLET", "leaflet"],
       ].map(([label, id]) => (
-        <button key={id} onClick={() => setPage(id)}>
+        <button type="button" key={id} onClick={() => setPage(id)}>
           {label}
         </button>
       ))}
