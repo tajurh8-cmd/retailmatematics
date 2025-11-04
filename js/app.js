@@ -1,59 +1,37 @@
-const { useState } = React;
+const { useState, useRef } = React;
 
 function App() {
   const [page, setPage] = useState("menu");
   const [result, setResult] = useState("");
-  const [inputs, setInputs] = useState({});
 
-  console.log("📘 App render — page:", page);
+  // Simpan referensi input agar nilainya tidak ikut re-render
+  const refs = useRef({});
 
-  const handleChange = (e) => {
-    const { id, value } = e.target;
-    console.log("✏️ Input berubah:", id, "=", value);
-    setInputs((prev) => ({ ...prev, [id]: value }));
+  const getValue = (id) => {
+    const el = refs.current[id];
+    if (!el) return 0;
+    return Number(el.value.replace(/\./g, "")) || 0;
   };
 
-  const resetInputs = () => {
-    console.log("♻️ Reset input dipanggil");
-    setInputs({});
+  const resetAll = () => {
+    setResult("");
+    Object.values(refs.current).forEach((el) => (el.value = ""));
   };
 
   const format = (n) => Math.round(n).toLocaleString("id-ID");
 
-  const handleCalc = (formula) => {
-    console.log("🧮 Tombol Hitung diklik");
-    try {
-      const val = formula();
-      setResult(val);
-      console.log("✅ Hasil perhitungan:", val);
-    } catch (err) {
-      console.error("⚠️ Error hitung:", err);
-      setResult("⚠️ Data tidak valid");
-    }
-  };
-
- const Input = React.memo(({ id }) => {
-  const [localValue, setLocalValue] = useState("");
-
-  useEffect(() => {
-    if (inputs[id] !== localValue) setLocalValue(inputs[id] || "");
-  }, [inputs[id]]);
-
-  return (
+  const Input = ({ id }) => (
     <input
+      ref={(el) => (refs.current[id] = el)}
       id={id}
       inputMode="numeric"
       placeholder={id.toUpperCase()}
-      value={localValue}
-      onChange={(e) => {
-        const val = e.target.value;
-        setLocalValue(val);
-        handleChange({ target: { id, value: val } });
+      onInput={(e) => {
+        let value = e.target.value.replace(/\D/g, "");
+        e.target.value = value ? Number(value).toLocaleString("id-ID") : "";
       }}
     />
   );
-});
-
 
   const Form = ({ title, fields, calc }) => (
     <div className="form fade">
@@ -64,31 +42,17 @@ function App() {
       <button
         type="button"
         onClick={() => {
-          console.log("👉 Klik tombol Hitung pada:", title);
-          handleCalc(calc);
+          const val = calc();
+          setResult(val);
         }}
       >
         Hitung
       </button>
       {result && <div className="result-card">{result}</div>}
-      <button
-        type="button"
-        onClick={() => {
-          console.log("🔁 Klik Hitung Ulang");
-          setResult("");
-          resetInputs();
-        }}
-      >
+      <button type="button" onClick={resetAll}>
         🔁 Hitung Ulang
       </button>
-      <button
-        type="button"
-        onClick={() => {
-          console.log("⬅️ Kembali ke Menu");
-          setResult("");
-          setPage("menu");
-        }}
-      >
+      <button type="button" onClick={() => setPage("menu")}>
         ⬅️ Kembali ke Menu
       </button>
     </div>
@@ -98,50 +62,49 @@ function App() {
     <div className="menu fade">
       {[
         ["📦 PKM", "pkm"],
-        ["🏬 PKM EXIST", "pkmexist"],
-        ["📈 N+", "nplus"],
         ["⏱️ LT", "lt"],
-        ["📅 DSI HARIAN", "dsiharian"],
-        ["🗓️ DSI PER BULAN", "dsibulanan"],
+        ["📅 DSI Harian", "dsiharian"],
+        ["🗓️ DSI Bulanan", "dsibulanan"],
         ["🔄 TO", "to"],
-        ["🧾 STD", "std"],
-        ["👥 APC", "apc"],
-        ["💰 GROSS MARGIN", "gm"],
-        ["📊 LABA RUGI", "labarugi"],
-        ["📰 LEAFLET", "leaflet"],
+        ["💰 Gross Margin", "gm"],
       ].map(([label, id]) => (
-        <button
-          type="button"
-          key={id}
-          onClick={() => {
-            console.log("📲 Pindah halaman ke:", id);
-            setPage(id);
-          }}
-        >
+        <button key={id} type="button" onClick={() => setPage(id)}>
           {label}
         </button>
       ))}
     </div>
   );
 
-  const get = (id) => +inputs[id]?.replace(/\./g, "") || 0;
-
   const formulas = {
-    pkm: () => `PKM = ${format(get("asq") * (get("lt") + get("ss")) + get("minor"))}`,
-    lt: () => `LT = ${format(7 / get("freq") + 1)}`,
+    pkm: () =>
+      `PKM = ${format(getValue("asq") * (getValue("lt") + getValue("ss")) + getValue("minor"))}`,
+    lt: () => `LT = ${format(7 / (getValue("freq") || 1) + 1)}`,
+    dsiharian: () => `DSI Harian = ${format(getValue("stock") / (getValue("sales") || 1))}`,
+    dsibulanan: () => `DSI Bulanan = ${format(getValue("dsiharian") * 30)}`,
+    to: () => `TO = ${format(getValue("sales") / (getValue("avgStock") || 1))}`,
+    gm: () =>
+      `GM = ${(((getValue("sales") - getValue("cogs")) / (getValue("sales") || 1)) * 100).toFixed(1)}%`,
+  };
+
+  const fields = {
+    pkm: ["asq", "lt", "ss", "minor"],
+    lt: ["freq"],
+    dsiharian: ["stock", "sales"],
+    dsibulanan: ["dsiharian"],
+    to: ["sales", "avgStock"],
+    gm: ["sales", "cogs"],
   };
 
   return (
     <div className="app">
-      <header>Matematika Ritel Tools (DEBUG)</header>
+      <header>Matematika Ritel Tools</header>
       {page === "menu" ? (
         <Menu />
       ) : (
-        <Form title={page.toUpperCase()} fields={["asq", "lt", "ss", "minor"]} calc={formulas.pkm} />
+        <Form title={page.toUpperCase()} fields={fields[page]} calc={formulas[page]} />
       )}
     </div>
   );
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App />);
-
