@@ -1,12 +1,13 @@
-// ====== AUTO-FORMAT ANGKA DI TEXTBOX ======
 document.addEventListener("input", function (e) {
   const target = e.target;
   if (target.tagName === "INPUT" && target.getAttribute("inputmode") === "numeric") {
-    let value = target.value.replace(/\D/g, ""); // hapus semua non-digit
+    const start = target.selectionStart;
+    let value = target.value.replace(/\D/g, "");
     if (value) {
-      target.value = parseInt(value, 10).toLocaleString("id-ID"); // tambahkan titik ribuan
+      target.value = Number(value).toLocaleString("id-ID");
     } else {
       target.value = "";
     }
+    target.setSelectionRange(start, start); // jaga posisi kursor
   }
 });
