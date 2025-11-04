@@ -32,15 +32,28 @@ function App() {
     }
   };
 
-  const Input = ({ id }) => (
+ const Input = React.memo(({ id }) => {
+  const [localValue, setLocalValue] = useState("");
+
+  useEffect(() => {
+    if (inputs[id] !== localValue) setLocalValue(inputs[id] || "");
+  }, [inputs[id]]);
+
+  return (
     <input
       id={id}
       inputMode="numeric"
       placeholder={id.toUpperCase()}
-      value={inputs[id] || ""}
-      onChange={handleChange}
+      value={localValue}
+      onChange={(e) => {
+        const val = e.target.value;
+        setLocalValue(val);
+        handleChange({ target: { id, value: val } });
+      }}
     />
   );
+});
+
 
   const Form = ({ title, fields, calc }) => (
     <div className="form fade">
@@ -131,3 +144,4 @@ function App() {
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+
