@@ -4,48 +4,63 @@ function App() {
   const [page, setPage] = useState("menu");
   const [result, setResult] = useState("");
   const [inputs, setInputs] = useState({});
-
-  const resetAll = () => {
-    setResult("");
-    setInputs({});
-  };
+  const [lastPage, setLastPage] = useState("");
 
   const handleChange = (e) => {
     const { id, value } = e.target;
     setInputs((prev) => ({ ...prev, [id]: value }));
   };
 
+  const resetInputs = () => setInputs({});
   const format = (n) => Math.round(n).toLocaleString("id-ID");
 
-  const Form = ({ title, inputsList, onCalc }) => (
-    <div className="form">
+  const handleBack = () => {
+    setResult("");
+    setLastPage(page);
+    setPage("menu");
+  };
+
+  const handleCalc = (formula) => {
+    try {
+      const val = formula();
+      setResult(val);
+    } catch (err) {
+      setResult("⚠️ Data tidak valid");
+    }
+  };
+
+  const Input = ({ id }) => (
+    <input
+      id={id}
+      inputMode="numeric"
+      placeholder={id.toUpperCase()}
+      value={inputs[id] || ""}
+      onChange={handleChange}
+    />
+  );
+
+  const Form = ({ title, fields, calc }) => (
+    <div className="form fade">
       <h3>{title}</h3>
-      {inputsList.map((i) => (
-        <input
-          key={i}
-          id={i}
-          inputMode="numeric"
-          placeholder={i.toUpperCase()}
-          value={inputs[i] || ""}
-          onChange={handleChange}
-        />
+      {fields.map((f) => (
+        <Input key={f} id={f} />
       ))}
-      <button onClick={onCalc}>Hitung</button>
+      <button onClick={() => handleCalc(calc)}>Hitung</button>
       {result && <div className="result-card">{result}</div>}
-      <button onClick={resetAll}>🔁 Hitung Ulang</button>
       <button
         onClick={() => {
-          resetAll();
-          setPage("menu");
+          setResult("");
+          resetInputs();
         }}
       >
-        ⬅️ Kembali ke Menu
+        🔁 Hitung Ulang
       </button>
+      <button onClick={handleBack}>⬅️ Kembali ke Menu</button>
     </div>
   );
 
   const Menu = () => (
-    <div className="menu">
+    <div className="menu fade">
       {[
         ["📦 PKM", "pkm"],
         ["🏬 PKM EXIST", "pkmexist"],
@@ -67,182 +82,50 @@ function App() {
     </div>
   );
 
-  // ====== HALAMAN KHUSUS UNTUK TIAP MODUL ======
-  switch (page) {
-    case "menu":
-      return (
-        <div className="app">
-          <header>Matematika Ritel Tools</header>
-          <Menu />
-        </div>
-      );
+  const get = (id) => +inputs[id]?.replace(/\./g, "") || 0;
 
-    case "pkm":
-      return (
-        <Form
-          title="📦 PKM"
-          inputsList={["asq", "lt", "ss", "minor"]}
-          onCalc={() => {
-            const asq = +inputs.asq?.replace(/\./g, "") || 0;
-            const lt = +inputs.lt?.replace(/\./g, "") || 0;
-            const ss = +inputs.ss?.replace(/\./g, "") || 0;
-            const minor = +inputs.minor?.replace(/\./g, "") || 0;
-            setResult(`PKM = ${format(asq * (lt + ss) + minor)}`);
-          }}
-        />
-      );
+  const formulas = {
+    pkm: () => `PKM = ${format(get("asq") * (get("lt") + get("ss")) + get("minor"))}`,
+    pkmexist: () => `PKM Exist = ${format(get("asq") * (get("lt") + get("ss")))}`,
+    nplus: () =>
+      `N+ = ${(((get("salesNow") - get("salesPrev")) / (get("salesPrev") || 1)) * 100).toFixed(1)}%`,
+    lt: () => `LT = ${format(7 / get("freq") + 1)}`,
+    dsiharian: () => `DSI Harian = ${format(get("stock") / (get("sales") || 1))}`,
+    dsibulanan: () => `DSI Bulanan = ${format(get("dsiharian") * 30)}`,
+    to: () => `TO = ${format(get("sales") / (get("avgStock") || 1))}`,
+    std: () => `STD = ${((get("actual") / (get("target") || 1)) * 100).toFixed(1)}%`,
+    apc: () => `APC = ${format(get("sales") / (get("cust") || 1))}`,
+    gm: () =>
+      `GM = ${(((get("sales") - get("cogs")) / (get("sales") || 1)) * 100).toFixed(1)}%`,
+    labarugi: () => `Laba Rugi = ${format(get("sales") - get("cost"))}`,
+    leaflet: () => `Leaflet per Store = ${format(get("totalLeaflet") / (get("store") || 1))}`,
+  };
 
-    case "pkmexist":
-      return (
-        <Form
-          title="🏬 PKM EXIST"
-          inputsList={["asq", "lt", "ss"]}
-          onCalc={() => {
-            const asq = +inputs.asq?.replace(/\./g, "") || 0;
-            const lt = +inputs.lt?.replace(/\./g, "") || 0;
-            const ss = +inputs.ss?.replace(/\./g, "") || 0;
-            setResult(`PKM Exist = ${format(asq * (lt + ss))}`);
-          }}
-        />
-      );
+  const fields = {
+    pkm: ["asq", "lt", "ss", "minor"],
+    pkmexist: ["asq", "lt", "ss"],
+    nplus: ["salesNow", "salesPrev"],
+    lt: ["freq"],
+    dsiharian: ["stock", "sales"],
+    dsibulanan: ["dsiharian"],
+    to: ["sales", "avgStock"],
+    std: ["target", "actual"],
+    apc: ["sales", "cust"],
+    gm: ["sales", "cogs"],
+    labarugi: ["sales", "cost"],
+    leaflet: ["totalLeaflet", "store"],
+  };
 
-    case "nplus":
-      return (
-        <Form
-          title="📈 N+"
-          inputsList={["salesNow", "salesPrev"]}
-          onCalc={() => {
-            const now = +inputs.salesNow?.replace(/\./g, "") || 0;
-            const prev = +inputs.salesPrev?.replace(/\./g, "") || 0;
-            const growth = ((now - prev) / prev) * 100;
-            setResult(`N+ = ${growth.toFixed(1)}%`);
-          }}
-        />
-      );
-
-    case "lt":
-      return (
-        <Form
-          title="⏱️ LT"
-          inputsList={["freq"]}
-          onCalc={() => {
-            const f = +inputs.freq?.replace(/\./g, "") || 0;
-            setResult(`LT = ${format(7 / f + 1)}`);
-          }}
-        />
-      );
-
-    case "dsiharian":
-      return (
-        <Form
-          title="📅 DSI Harian"
-          inputsList={["stock", "sales"]}
-          onCalc={() => {
-            const s = +inputs.stock?.replace(/\./g, "") || 0;
-            const sl = +inputs.sales?.replace(/\./g, "") || 0;
-            setResult(`DSI Harian = ${format(s / (sl || 1))}`);
-          }}
-        />
-      );
-
-    case "dsibulanan":
-      return (
-        <Form
-          title="🗓️ DSI Per Bulan"
-          inputsList={["dsiharian"]}
-          onCalc={() => {
-            const d = +inputs.dsiharian?.replace(/\./g, "") || 0;
-            setResult(`DSI Bulanan = ${format(d * 30)}`);
-          }}
-        />
-      );
-
-    case "to":
-      return (
-        <Form
-          title="🔄 Turn Over"
-          inputsList={["sales", "avgStock"]}
-          onCalc={() => {
-            const s = +inputs.sales?.replace(/\./g, "") || 0;
-            const a = +inputs.avgStock?.replace(/\./g, "") || 0;
-            setResult(`TO = ${format(s / (a || 1))}`);
-          }}
-        />
-      );
-
-    case "std":
-      return (
-        <Form
-          title="🧾 STD"
-          inputsList={["target", "actual"]}
-          onCalc={() => {
-            const t = +inputs.target?.replace(/\./g, "") || 0;
-            const a = +inputs.actual?.replace(/\./g, "") || 0;
-            setResult(`STD = ${(a / (t || 1) * 100).toFixed(1)}%`);
-          }}
-        />
-      );
-
-    case "apc":
-      return (
-        <Form
-          title="👥 APC"
-          inputsList={["sales", "cust"]}
-          onCalc={() => {
-            const s = +inputs.sales?.replace(/\./g, "") || 0;
-            const c = +inputs.cust?.replace(/\./g, "") || 0;
-            setResult(`APC = ${format(s / (c || 1))}`);
-          }}
-        />
-      );
-
-    case "gm":
-      return (
-        <Form
-          title="💰 Gross Margin"
-          inputsList={["sales", "cogs"]}
-          onCalc={() => {
-            const s = +inputs.sales?.replace(/\./g, "") || 0;
-            const c = +inputs.cogs?.replace(/\./g, "") || 0;
-            setResult(`GM = ${((s - c) / (s || 1) * 100).toFixed(1)}%`);
-          }}
-        />
-      );
-
-    case "labarugi":
-      return (
-        <Form
-          title="📊 Laba Rugi"
-          inputsList={["sales", "cost"]}
-          onCalc={() => {
-            const s = +inputs.sales?.replace(/\./g, "") || 0;
-            const c = +inputs.cost?.replace(/\./g, "") || 0;
-            setResult(`Laba Rugi = ${format(s - c)}`);
-          }}
-        />
-      );
-
-    case "leaflet":
-      return (
-        <Form
-          title="📰 Leaflet"
-          inputsList={["totalLeaflet", "store"]}
-          onCalc={() => {
-            const t = +inputs.totalLeaflet?.replace(/\./g, "") || 0;
-            const s = +inputs.store?.replace(/\./g, "") || 0;
-            setResult(`Leaflet per Store = ${format(t / (s || 1))}`);
-          }}
-        />
-      );
-
-    default:
-      return (
-        <div className="app">
-          <header>Matematika Ritel Tools</header>
-          <Menu />
-        </div>
-      );
-  }
+  return (
+    <div className="app">
+      <header>Matematika Ritel Tools</header>
+      {page === "menu" ? (
+        <Menu />
+      ) : (
+        <Form title={page.toUpperCase()} fields={fields[page]} calc={formulas[page]} />
+      )}
+    </div>
+  );
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App />);
